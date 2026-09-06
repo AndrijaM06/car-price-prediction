@@ -1,22 +1,4 @@
-"""
-Skript za čišćenje sirovog skupa podataka o polovnim automobilima.
-
-Tok obrade (isti princip kao u lekciji o čišćenju podataka):
-
-    raw data
-      ↓
-    cleaning functions
-      ↓
-    cleaning pipeline
-      ↓
-    cleaned dataset
-
-Svaki korak čišćenja je izdvojen u posebnu funkciju, a zatim su svi koraci
-povezani u jedan pipeline pomoću pandas metode .pipe().
-"""
-
 import re
-
 import pandas as pd
 
 RAW_DATA_PATH = "data/cars.csv"
@@ -31,8 +13,6 @@ MAX_REALISTIC_VOLUME_CM3 = 8000
 
 
 def _standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
-    """Pretvara nazive kolona u jednostavan i dosledan snake_case oblik."""
-
     df = df.copy()
 
     new_columns = []
@@ -53,10 +33,6 @@ def _standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
         new_columns.append(clean_col)
 
     df.columns = new_columns
-
-    # Poznata mapiranja za ovaj skup podataka:
-    # mileage_kilometers -> mileage_km
-    # volume_cm3 ostaje isto, ali priceusd -> price_usd radi čitljivosti
     rename_map = {
         "mileage_kilometers": "mileage_km",
         "priceusd": "price_usd",
@@ -67,8 +43,6 @@ def _standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _strip_string_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja višak razmaka sa početka i kraja tekstualnih vrednosti."""
-
     df = df.copy()
 
     text_columns = df.select_dtypes(include=["object", "string"]).columns
@@ -80,8 +54,6 @@ def _strip_string_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_categorical_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardizuje kategorijske kolone: mala slova i uklanjanje razmaka."""
-
     df = df.copy()
 
     categorical_columns = [
@@ -103,13 +75,6 @@ def _clean_categorical_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _convert_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Eksplicitno konvertuje kolone za koje očekujemo da budu numeričke.
-
-    Ovo je zaštitni korak: čak i ako su kolone već numeričke, konverzija
-    pomoću pd.to_numeric(errors="coerce") osigurava da će skript ostati
-    pouzdan ako se u nekoj narednoj verziji fajla pojave nečiste vrednosti.
-    """
-
     df = df.copy()
 
     numeric_columns = [
@@ -127,8 +92,6 @@ def _convert_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_duplicate_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja potpuno identične redove (duplikate)."""
-
     df = df.copy()
     df = df.drop_duplicates()
 
@@ -136,12 +99,6 @@ def _remove_duplicate_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_rows_with_missing_target(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja redove kod kojih nedostaje ciljna promenljiva price_usd.
-
-    Bez ciljne vrednosti red ne može biti trening primer, jer ne znamo
-    stvarnu cenu sa kojom bismo uporedili predikciju modela.
-    """
-
     df = df.copy()
     df = df.dropna(subset=["price_usd"])
 
@@ -149,8 +106,6 @@ def _remove_rows_with_missing_target(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_invalid_price_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja redove sa nevalidnom (nula ili negativnom) cenom."""
-
     df = df.copy()
     df = df[df["price_usd"] > 0]
 
@@ -158,13 +113,6 @@ def _remove_invalid_price_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_invalid_mileage_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja redove sa nerealno velikom kilometražom.
-
-    Tokom EDA smo primetili redove sa kilometražom preko milion kilometara
-    (do skoro 10 miliona), što je fizički nemoguće za putnički automobil i
-    najverovatnije je posledica greške pri unosu.
-    """
-
     df = df.copy()
     df = df[
         df["mileage_km"].isna()
@@ -175,14 +123,6 @@ def _remove_invalid_mileage_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_invalid_year_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja redove sa nerealnom godinom proizvodnje.
-
-    Zadržavamo automobile proizvedene između 1970. i 2020. godine. Stariji
-    automobili (oldtimeri) su retki i mogu značajno da naruše obrazac koji
-    model pokušava da nauči, jer njihova cena zavisi od potpuno drugih
-    faktora (kolekcionarska vrednost) nego cena običnog polovnog automobila.
-    """
-
     df = df.copy()
     df = df[
         df["year"].between(MIN_REALISTIC_YEAR, MAX_REALISTIC_YEAR)
@@ -192,13 +132,6 @@ def _remove_invalid_year_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _remove_invalid_volume_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Uklanja redove sa nerealnom zapreminom motora.
-
-    Zapremina van opsega 300-8000 cm3 nije tipična za putnički automobil i
-    tretiramo je kao grešku u unosu. Nedostajuće vrednosti ne uklanjamo ovde
-    - njih ćemo popuniti kasnije u fazi pretprocesiranja.
-    """
-
     df = df.copy()
     df = df[
         df["volume_cm3"].isna()
@@ -211,8 +144,6 @@ def _remove_invalid_volume_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
-    """Kompletan pipeline za čišćenje sirovog skupa podataka."""
-
     df_clean = (
         df
         .pipe(_standardize_column_names)
@@ -232,8 +163,6 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    """Load raw data, clean it, and save the cleaned dataset."""
-
     print("Loading raw dataset...")
     df_raw = pd.read_csv(RAW_DATA_PATH)
     print(f"Raw dataset shape: {df_raw.shape}")
