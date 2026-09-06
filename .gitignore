@@ -3,3 +3,4 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 venv/
+models/random_forest_model.joblib
